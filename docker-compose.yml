@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: webhook_db
+      POSTGRES_USER: webhook_user
+      POSTGRES_PASSWORD: webhook_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webhook_user -d webhook_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://webhook_user:webhook_pass@db:5432/webhook_db
+      - WEBHOOK_SECRET=test_secret
+      - FLASK_ENV=development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: python app.py
+
+volumes:
+  postgres_data:
